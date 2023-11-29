@@ -210,4 +210,52 @@ ChimneyLR::GetHeightDerivWrtY (double x, double y) const
   return dzdy;
 }
 
+double
+Obstacle::GetHeight(double x, double y) const
+{
+  if (x >= obstacle_start_x_ && x <= obstacle_start_x_ + obstacle_length_ &&
+      y >= -obstacle_width_/2 && y <= obstacle_width_/2) {
+    return obstacle_height_;
+  }
+  return 0.0;
+}
+
+double
+Obstacle::GetHeightDerivWrtX(double x, double y) const
+{
+  // Assuming abrupt edges, the derivative will be a large value (like a delta function)
+  // Here, we represent it with a high constant value at the edges.
+  if ((x == obstacle_start_x_ || x == obstacle_start_x_ + obstacle_length_) &&
+      y >= -obstacle_width_/2 && y <= obstacle_width_/2) {
+    return std::numeric_limits<double>::max(); // Very steep edge
+  }
+  return 0.0; // Flat elsewhere
+}
+
+double
+Obstacle::GetHeightDerivWrtY(double x, double y) const
+{
+  // The derivative will be a large value at the edges in the y-direction.
+  if (x >= obstacle_start_x_ && x <= obstacle_start_x_ + obstacle_length_ &&
+      (y == -obstacle_width_/2 || y == obstacle_width_/2)) {
+    return std::numeric_limits<double>::max(); // Very steep edge
+  }
+  return 0.0; // Flat elsewhere
+}
+
+// TODO: Currently hardcoded. Maybe eventually we can feed line segments of obstacles
+// and do everything programtically.
+std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>
+Obstacle::GetObstacles() const
+{
+Eigen::Vector2d p0(obstacle_start_x_, -obstacle_width_/2);
+Eigen::Vector2d p1(obstacle_start_x_, obstacle_width_/2);
+Eigen::Vector2d p2(obstacle_start_x_ + obstacle_length_, obstacle_width_/2);
+Eigen::Vector2d p3(obstacle_start_x_ + obstacle_length_, -obstacle_width_/2);
+
+std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> line_segments = {
+    {p0, p1}, {p1, p2}, {p2, p3}, {p3, p0}
+};
+}
+
 } /* namespace towr */

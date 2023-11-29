@@ -83,6 +83,7 @@ public:
                    SlopeID,
                    ChimneyID,
                    ChimneyLRID,
+                   ObstacleID,
                    TERRAIN_COUNT };
 
   static HeightMap::Ptr MakeTerrain(TerrainID type);
@@ -107,6 +108,13 @@ public:
    * @return  The derivative of the height with respect to the dimension.
    */
   double GetDerivativeOfHeightWrt(Dim2D dim, double x, double y) const;
+
+  /**
+   * @brief
+   * @return Vector with all line segments std::pair<Eigen::Vector2d, Eigen::Vector2d> 
+   * of obstacles.
+   */
+  virtual std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> GetObstacles()
 
   /**
    * @brief Returns either the vector normal or tangent to the terrain patch.
@@ -179,7 +187,8 @@ const static std::map<HeightMap::TerrainID, std::string> terrain_names =
   {HeightMap::GapID,         "Gap"        },
   {HeightMap::SlopeID,       "Slope"      },
   {HeightMap::ChimneyID,     "Chimney"    },
-  {HeightMap::ChimneyLRID,   "ChimenyLR"  }
+  {HeightMap::ChimneyLRID,   "ChimenyLR"  },
+  {HeightMap::ObstacleID,    "Obstacle"   }
 };
 
 } /* namespace towr */
