@@ -170,6 +170,7 @@ public:
   double GetHeight(double x, double y) const override;
   double GetHeightDerivWrtX(double x, double y) const override;
   double GetHeightDerivWrtY(double x, double y) const override;
+  std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> GetObstacles() const;
 
 private:
   double obstacle_start_x_ = 1.0; // X-coordinate where the obstacle starts

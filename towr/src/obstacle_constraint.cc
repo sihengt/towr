@@ -33,11 +33,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace towr {
 
 
-ObstacleConstraint::ObstacleConstraint (const HeightMap::Ptr& terrain,
-                                      std::string ee_motion)
-    :ConstraintSet(kSpecifyLater, "obstacle-" + ee_motion)
+ObstacleConstraint::ObstacleConstraint (const HeightMap::Ptr& terrain)
+    :ConstraintSet(kSpecifyLater, "obstacle-")
 {
-  ee_motion_id_ = ee_motion;
   terrain_ = terrain;
 }
 
@@ -63,25 +61,25 @@ ObstacleConstraint::GetValues () const
   int row = 0;
   for (int id : node_ids_) {
     Vector3d p = nodes.at(id).p();
-    auto obstacle_list = terrain->GetObstacles();
+    auto obstacle_list = terrain_->GetObstacles();
     g(row++) = CalculateDistanceToNearestObstacle(p.x(), p.y());
   }
 
   return g;
 }
 
-double ObstacleConstraint::CalculateDistanceToNearestObstacle(double x, double y)
+double ObstacleConstraint::CalculateDistanceToNearestObstacle(double x, double y) const
 {
-  auto segments = terrain->GetObstacles();
+  auto segments = terrain_->GetObstacles();
   double min_distance = std::numeric_limits<double>::max();
   for (const auto& segment : segments) {
     double distance = DistanceToLineSegment({x, y}, segment);
     min_distance = std::min(min_distance, distance);
   }
-  reteurn min_distance;
+  return min_distance;
 }
 
-double ObstacleConstraint::DistanceToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment)
+double ObstacleConstraint::DistanceToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const
 {
   Eigen::Vector2d p = point;
   Eigen::Vector2d v = segment.first;
@@ -115,7 +113,7 @@ double ObstacleConstraint::DistanceToLineSegment(const Eigen::Vector2d& point, c
   return (p - projection_point).norm();
 }
 
-std::tuple<double, double, double> ObstacleConstraint::DistanceAndDerivativesToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) {
+std::tuple<double, double, double> ObstacleConstraint::DistanceAndDerivativesToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const {
     Eigen::Vector2d p = point;
     Eigen::Vector2d a = segment.first;
     Eigen::Vector2d b = segment.second;
@@ -126,7 +124,9 @@ std::tuple<double, double, double> ObstacleConstraint::DistanceAndDerivativesToL
     double ab_length_squared = ab.squaredNorm();
     if (ab_length_squared == 0.0) {
         // Segment is a point
-        return {ap.norm(), (p - a).normalized()};
+        double p_x = (p - a).normalized().x();
+        double p_y = (p - a).normalized().y();
+        return {ap.norm(), p_x, p_y};
     }
 
     double t = ap.dot(ab) / ab_length_squared;
@@ -155,7 +155,6 @@ ObstacleConstraint::VecBound
 ObstacleConstraint::GetBounds () const
 {
   VecBound bounds(GetRows());
-  double min_distance_to_obstacle_ = 0.01; // [m]
 
   int row = 0;
   for (int id : node_ids_) {

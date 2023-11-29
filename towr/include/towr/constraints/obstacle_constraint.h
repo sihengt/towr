@@ -22,7 +22,7 @@ public:
    * @param terrain  The terrain height value and slope for each position x,y.
    * @param ee_motion_id The name of the endeffector variable set.
    */
-  ObstacleConstraint (const HeightMap::Ptr& terrain, std::string ee_motion_id);
+  ObstacleConstraint (const HeightMap::Ptr& terrain);
   virtual ~ObstacleConstraint () = default;
 
   void InitVariableDependedQuantities(const VariablesPtr& x) override;
@@ -30,7 +30,7 @@ public:
   VectorXd GetValues() const override;
   VecBound GetBounds() const override;
   void FillJacobianBlock (std::string var_set, Jacobian&) const override;
-
+  
 private:
   NodesVariablesPhaseBased::Ptr ee_motion_; ///< the position of the endeffector.
   HeightMap::Ptr terrain_;    ///< the height map of the current terrain.
@@ -38,9 +38,10 @@ private:
   std::string ee_motion_id_;  ///< the name of the endeffector variable set.
   std::vector<int> node_ids_; ///< the indices of the nodes constrained.
 
-  double CalculateDistanceToNearestObstacle(double x, double y);
-  double DistanceToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment);
-  std::tuple<double, double, double> DistanceAndDerivativesToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment);
+  double CalculateDistanceToNearestObstacle(double x, double y) const;
+  double DistanceToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const;
+  std::tuple<double, double, double> DistanceAndDerivativesToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const;
+  double min_distance_to_obstacle_ = 0.01; // [m]
 };
 
 } /* namespace towr */

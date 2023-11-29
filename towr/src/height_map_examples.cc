@@ -248,14 +248,15 @@ Obstacle::GetHeightDerivWrtY(double x, double y) const
 std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>
 Obstacle::GetObstacles() const
 {
-Eigen::Vector2d p0(obstacle_start_x_, -obstacle_width_/2);
-Eigen::Vector2d p1(obstacle_start_x_, obstacle_width_/2);
-Eigen::Vector2d p2(obstacle_start_x_ + obstacle_length_, obstacle_width_/2);
-Eigen::Vector2d p3(obstacle_start_x_ + obstacle_length_, -obstacle_width_/2);
+  Eigen::Vector2d p0(obstacle_start_x_, -obstacle_width_/2);
+  Eigen::Vector2d p1(obstacle_start_x_, obstacle_width_/2);
+  Eigen::Vector2d p2(obstacle_start_x_ + obstacle_length_, obstacle_width_/2);
+  Eigen::Vector2d p3(obstacle_start_x_ + obstacle_length_, -obstacle_width_/2);
 
-std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> line_segments = {
+  std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> line_segments = {
     {p0, p1}, {p1, p2}, {p2, p3}, {p3, p0}
-};
+  };
+  return line_segments;
 }
 
 } /* namespace towr */

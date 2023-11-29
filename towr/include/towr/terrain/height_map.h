@@ -114,8 +114,9 @@ public:
    * @return Vector with all line segments std::pair<Eigen::Vector2d, Eigen::Vector2d> 
    * of obstacles.
    */
-  virtual std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> GetObstacles()
-
+  std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> GetObstacles() const {
+    return std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>>{};
+  }
   /**
    * @brief Returns either the vector normal or tangent to the terrain patch.
    * @param direction  The terrain normal or tangent vectors.

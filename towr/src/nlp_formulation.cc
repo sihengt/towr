@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <towr/constraints/terrain_constraint.h>
 #include <towr/constraints/total_duration_constraint.h>
 #include <towr/constraints/spline_acc_constraint.h>
+#include <towr/constraints/obstacle_constraint.h>
 
 #include <towr/costs/node_cost.h>
 #include <towr/variables/nodes_variables_all.h>
@@ -221,6 +222,7 @@ NlpFormulation::GetConstraint (Parameters::ConstraintName name,
     case Parameters::Force:          return MakeForceConstraint();
     case Parameters::Swing:          return MakeSwingConstraint();
     case Parameters::BaseAcc:        return MakeBaseAccConstraint(s);
+    case Parameters::Obstacle:       return MakeObstacleConstraint();
     default: throw std::runtime_error("constraint not defined!");
   }
 }
@@ -327,6 +329,15 @@ NlpFormulation::MakeBaseAccConstraint (const SplineHolder& s) const
   constraints.push_back(std::make_shared<SplineAccConstraint>
                         (s.base_angular_, id::base_ang_nodes));
 
+  return constraints;
+}
+
+NlpFormulation::ContraintPtrVec
+NlpFormulation::MakeObstacleConstraint () const
+{
+  ContraintPtrVec constraints;
+
+  constraints.push_back(std::make_shared<ObstacleConstraint>(terrain_));
   return constraints;
 }
 
