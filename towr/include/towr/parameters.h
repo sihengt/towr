@@ -186,6 +186,9 @@ public:
   /// Interval at which the base motion constraint is enforced.
   double dt_constraint_base_motion_;
 
+  /// Interval at which the obstacle avoidance constraint is enforced.
+  double dt_constraint_obstacle_;
+
   /// Fixed duration of each cubic polynomial describing the base motion.
   double duration_base_polynomial_;
 

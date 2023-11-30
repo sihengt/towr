@@ -337,7 +337,8 @@ NlpFormulation::MakeObstacleConstraint () const
 {
   ContraintPtrVec constraints;
 
-  constraints.push_back(std::make_shared<ObstacleConstraint>(terrain_));
+  constraints.push_back(std::make_shared<ObstacleConstraint>
+                        (terrain_, params_.GetTotalTime(), params_.dt_constraint_obstacle_));
   return constraints;
 }
 

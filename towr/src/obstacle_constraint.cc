@@ -29,50 +29,74 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <towr/constraints/obstacle_constraint.h>
 
-
 namespace towr {
 
 
-ObstacleConstraint::ObstacleConstraint (const HeightMap::Ptr& terrain)
-    :ConstraintSet(kSpecifyLater, "obstacle-")
+ObstacleConstraint::ObstacleConstraint (const HeightMap::Ptr& terrain, double T, double dt, 
+                                        const SplineHolder& spline_holder)
+    :TimeDiscretizationConstraint(T, dt, "obstacle")
 {
+  // We need the position of the base to calculate our constraint
+  base_linear_ = spline_holder.base_linear_;
+  
+  // Terrain holds obstacle information.
   terrain_ = terrain;
+  // TODO: Not all terrains have obstacles. For those without, we could essentially not use this constraint.
+  obstacle_list = terrain_->GetObstacles();
+
+  // Pretty much only one constraint (distance of base to obstacle) for each dt.
+  SetRows(GetNumberOfNodes());
+}
+
+void 
+ObstacleConstraint::UpdateConstraintAtInstance(double t, int k, VectorXd& g) const
+{
+  double x = base_linear_->GetPoint(t).p().x();
+  double y = base_linear_->GetPoint(t).p().x();
+  g.Row(k) = CalculateDistanceToNearestObstacle(x, y);
 }
 
 void
-ObstacleConstraint::InitVariableDependedQuantities (const VariablesPtr& x)
+ObstacleConstraint::UpdateBoundsAtInstance(double t, int k, VecBound& bounds) const
 {
-  ee_motion_ = x->GetComponent<NodesVariablesPhaseBased>(ee_motion_id_);
-
-  // skip first node, b/c already constrained by initial stance
-  for (int id=1; id<ee_motion_->GetNodes().size(); ++id)
-    node_ids_.push_back(id);
-
-  int constraint_count = node_ids_.size();
-  SetRows(constraint_count);
+  bounds.at(k) = ifopt::Bounds(min_distance_to_obstacle_, ifopt::inf);
 }
 
-Eigen::VectorXd
-ObstacleConstraint::GetValues () const
+void 
+ObstacleConstraint::UpdateJacobianAtInstance(double t, int k, std::string var_set, Jacobian& jac) const
 {
-  VectorXd g(GetRows());
+  if (var_set == id::base_lin_nodes) {
+    // Get the base position at time t
+    Eigen::Vector2d base_pos(base_linear_->GetPoint(t).p().x(), base_linear_->GetPoint(t).p().y());
 
-  auto nodes = ee_motion_->GetNodes();
-  int row = 0;
-  for (int id : node_ids_) {
-    Vector3d p = nodes.at(id).p();
-    auto obstacle_list = terrain_->GetObstacles();
-    g(row++) = CalculateDistanceToNearestObstacle(p.x(), p.y());
+    // Find the closest obstacle and get the derivatives
+    double min_distance = std::numeric_limits<double>::max();
+    double derivative_x = 0.0;
+    double derivative_y = 0.0;
+
+    for (const auto& segment : obstacle_list) {
+      auto [distance, dx, dy] = DistanceAndDerivativesToLineSegment(base_pos, segment);
+      if (distance < min_distance) {
+        min_distance = distance;
+        derivative_x = dx;
+        derivative_y = dy;
+      }
+    }
+
+    // Fill the Jacobian matrix
+    // Assuming jac is already of correct size and initialized to zero
+    int idx_x = k * 3; // Assuming 3 variables (x, y, z) per node
+    int idx_y = k * 3 + 1;
+
+    jac.coeffRef(0, idx_x) = derivative_x;
+    jac.coeffRef(0, idx_y) = derivative_y;
   }
-
-  return g;
 }
 
 double ObstacleConstraint::CalculateDistanceToNearestObstacle(double x, double y) const
 {
-  auto segments = terrain_->GetObstacles();
   double min_distance = std::numeric_limits<double>::max();
-  for (const auto& segment : segments) {
+  for (const auto& segment : obstacle_list) {
     double distance = DistanceToLineSegment({x, y}, segment);
     min_distance = std::min(min_distance, distance);
   }
@@ -151,23 +175,8 @@ std::tuple<double, double, double> ObstacleConstraint::DistanceAndDerivativesToL
 }
 
 
-ObstacleConstraint::VecBound
-ObstacleConstraint::GetBounds () const
-{
-  VecBound bounds(GetRows());
 
-  int row = 0;
-  for (int id : node_ids_) {
-    // if (ee_motion_->IsConstantNode(id))
-    //   bounds.at(row) = ifopt::BoundZero;
-    // else
-    bounds.at(row) = ifopt::Bounds(min_distance_to_obstacle_, ifopt::inf);
-    row++;
-  }
-
-  return bounds;
-}
-
+// TODO: OBSOLETE!
 void ObstacleConstraint::FillJacobianBlock (std::string var_set, Jacobian& jac) const {
   if (var_set == ee_motion_->GetName()) {
     auto nodes = ee_motion_->GetNodes();
