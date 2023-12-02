@@ -170,12 +170,12 @@ public:
   double GetHeight(double x, double y) const override;
   double GetHeightDerivWrtX(double x, double y) const override;
   double GetHeightDerivWrtY(double x, double y) const override;
-  std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> GetObstacles() const;
+  std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> GetObstacles() const override;
 
 private:
   double obstacle_start_x_ = 1.0; // X-coordinate where the obstacle starts
-  double obstacle_length_ = 1.0;  // Length of the obstacle in the X-direction
-  double obstacle_width_ = 1.0;   // Width of the obstacle in the Y-direction
+  double obstacle_length_ = 0.2;  // Length of the obstacle in the X-direction
+  double obstacle_width_ = 0.2;   // Width of the obstacle in the Y-direction
   double obstacle_height_ = 2.0;  // Height of the obstacle
 };
 

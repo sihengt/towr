@@ -222,7 +222,7 @@ NlpFormulation::GetConstraint (Parameters::ConstraintName name,
     case Parameters::Force:          return MakeForceConstraint();
     case Parameters::Swing:          return MakeSwingConstraint();
     case Parameters::BaseAcc:        return MakeBaseAccConstraint(s);
-    case Parameters::Obstacle:       return MakeObstacleConstraint();
+    case Parameters::Obstacle:       return MakeObstacleConstraint(s);
     default: throw std::runtime_error("constraint not defined!");
   }
 }
@@ -333,12 +333,12 @@ NlpFormulation::MakeBaseAccConstraint (const SplineHolder& s) const
 }
 
 NlpFormulation::ContraintPtrVec
-NlpFormulation::MakeObstacleConstraint () const
+NlpFormulation::MakeObstacleConstraint (const SplineHolder& s) const
 {
   ContraintPtrVec constraints;
 
   constraints.push_back(std::make_shared<ObstacleConstraint>
-                        (terrain_, params_.GetTotalTime(), params_.dt_constraint_obstacle_));
+                        (terrain_, params_.GetTotalTime(), params_.dt_constraint_obstacle_, s));
   return constraints;
 }
 

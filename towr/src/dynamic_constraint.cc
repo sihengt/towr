@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <towr/variables/variable_names.h>
 #include <towr/variables/cartesian_dimensions.h>
+#include <iostream>
 
 namespace towr {
 

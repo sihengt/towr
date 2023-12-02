@@ -17,7 +17,6 @@
     pkg="towr_ros" 
     type="rviz_terrain_publisher" 
     output="screen"
-    launch-prefix="$(arg gdb)"
     >
   </node>
   
@@ -27,7 +26,6 @@
     pkg="towr_ros" 
     type="goal_pose_publisher" 
     output="screen"
-    launch-prefix="$(arg gdb)"
     >
   </node>
 

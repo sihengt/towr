@@ -28,6 +28,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
 #include <towr/terrain/examples/height_map_examples.h>
+#include <iostream>
 
 namespace towr {
 
@@ -256,6 +257,7 @@ Obstacle::GetObstacles() const
   std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> line_segments = {
     {p0, p1}, {p1, p2}, {p2, p3}, {p3, p0}
   };
+  std::cout << "returning obstacles!" << std::endl;
   return line_segments;
 }
 

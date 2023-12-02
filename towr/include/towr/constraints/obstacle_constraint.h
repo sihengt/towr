@@ -6,7 +6,12 @@
 #include <towr/terrain/height_map.h>
 #include <towr/variables/variable_names.h>
 #include <towr/variables/cartesian_dimensions.h>
+
+#include <towr/variables/spline.h>
 #include <towr/variables/spline_holder.h>
+
+#include "time_discretization_constraint.h"
+
 
 namespace towr {
 
@@ -15,7 +20,7 @@ namespace towr {
  *
  * @ingroup Constraints
  */
-class ObstacleConstraint : public ifopt::ConstraintSet {
+class ObstacleConstraint : public TimeDiscretizationConstraint {
 public:
   using Vector3d = Eigen::Vector3d;
 
@@ -24,7 +29,7 @@ public:
    * @param terrain  The terrain height value and slope for each position x,y.
    * @param ee_motion_id The name of the endeffector variable set.
    */
-  ObstacleConstraint (const HeightMap::Ptr& terrain, double T, double dt);
+  ObstacleConstraint (const HeightMap::Ptr& terrain, double T, double dt, const SplineHolder& spline_holder);
   virtual ~ObstacleConstraint () = default;
   
   /**
@@ -34,7 +39,7 @@ public:
    * @param[in/out] g  The complete vector of constraint values, for which the
    *                   corresponding row must be filled.
    */
-  void UpdateConstraintAtInstance(double t, int k, VectorXd& g) const;
+  void UpdateConstraintAtInstance(double t, int k, VectorXd& g) const override;
   
     /**
    * @brief Sets upper/lower bound a specific time t, corresponding to node k.
@@ -43,7 +48,7 @@ public:
    * @param[in/out] b The complete vector of bounds, for which the corresponding
    *                  row must be set.
    */
-  void UpdateBoundsAtInstance(double t, int k, VecBound& b) const;
+  void UpdateBoundsAtInstance(double t, int k, VecBound& b) const override;
   
   /**
    * @brief Sets Jacobian rows at a specific time t, corresponding to node k.
@@ -53,15 +58,12 @@ public:
    * @param[in/out] jac  The complete Jacobian, for which the corresponding
    *                     row and columns must be set.
    */
-  void UpdateJacobianAtInstance(double t, int k, std::string var_set, Jacobian& jac) const;
-
-  VectorXd GetValues() const override;
-  VecBound GetBounds() const override;
-  void FillJacobianBlock (std::string var_set, Jacobian&) const override;
+  void UpdateJacobianAtInstance(double t, int k, std::string var_set, Jacobian& jac) const override;
   
 private:
   NodesVariablesPhaseBased::Ptr ee_motion_; ///< the position of the endeffector.
   HeightMap::Ptr terrain_;    ///< the height map of the current terrain.
+  NodeSpline::Ptr base_linear_;
 
   std::string ee_motion_id_;  ///< the name of the endeffector variable set.
   std::vector<int> node_ids_; ///< the indices of the nodes constrained.
@@ -69,8 +71,9 @@ private:
 
   double CalculateDistanceToNearestObstacle(double x, double y) const;
   double DistanceToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const;
+  Eigen::Vector2d calculateEdgeDirection(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const;
   std::tuple<double, double, double> DistanceAndDerivativesToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const;
-  double min_distance_to_obstacle_ = 0.01; // [m]
+  double min_distance_to_obstacle_ = 0.1; // [m]
 };
 
 } /* namespace towr */

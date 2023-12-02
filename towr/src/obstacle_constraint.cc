@@ -28,6 +28,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
 #include <towr/constraints/obstacle_constraint.h>
+#include <iostream>
 
 namespace towr {
 
@@ -52,8 +53,8 @@ void
 ObstacleConstraint::UpdateConstraintAtInstance(double t, int k, VectorXd& g) const
 {
   double x = base_linear_->GetPoint(t).p().x();
-  double y = base_linear_->GetPoint(t).p().x();
-  g.Row(k) = CalculateDistanceToNearestObstacle(x, y);
+  double y = base_linear_->GetPoint(t).p().y();
+  g[k] = CalculateDistanceToNearestObstacle(x, y);
 }
 
 void
@@ -68,6 +69,9 @@ ObstacleConstraint::UpdateJacobianAtInstance(double t, int k, std::string var_se
   if (var_set == id::base_lin_nodes) {
     // Get the base position at time t
     Eigen::Vector2d base_pos(base_linear_->GetPoint(t).p().x(), base_linear_->GetPoint(t).p().y());
+
+    if (obstacle_list.size() == 0)
+      return;     
 
     // Find the closest obstacle and get the derivatives
     double min_distance = std::numeric_limits<double>::max();
@@ -95,12 +99,29 @@ ObstacleConstraint::UpdateJacobianAtInstance(double t, int k, std::string var_se
 
 double ObstacleConstraint::CalculateDistanceToNearestObstacle(double x, double y) const
 {
-  double min_distance = std::numeric_limits<double>::max();
+  double min_distance = 100.0;
+
   for (const auto& segment : obstacle_list) {
     double distance = DistanceToLineSegment({x, y}, segment);
     min_distance = std::min(min_distance, distance);
   }
   return min_distance;
+}
+
+Eigen::Vector2d ObstacleConstraint::calculateEdgeDirection(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const {
+    Eigen::Vector2d edgeVector = segment.second - segment.first; // Vector along the edge of the obstacle
+    Eigen::Vector2d normalVector(-edgeVector.y(), edgeVector.x()); // Normal vector to the edge
+
+    // Check the side of the point relative to the obstacle edge
+    if ((point - segment.first).dot(normalVector) > 0) {
+        // Point is on the left side of the obstacle (assuming standard coordinate system)
+        // Rotate the edge vector 90 degrees counter-clockwise to guide along the edge
+        return Eigen::Vector2d(-normalVector.x(), -normalVector.y());
+    } else {
+        // Point is on the right side of the obstacle
+        // Rotate the edge vector 90 degrees clockwise
+        return normalVector;
+    }
 }
 
 double ObstacleConstraint::DistanceToLineSegment(const Eigen::Vector2d& point, const std::pair<Eigen::Vector2d, Eigen::Vector2d>& segment) const
@@ -143,72 +164,47 @@ std::tuple<double, double, double> ObstacleConstraint::DistanceAndDerivativesToL
     Eigen::Vector2d b = segment.second;
     Eigen::Vector2d ab = b - a;
     Eigen::Vector2d ap = p - a;
-    Eigen::Vector2d bp = p - b;
 
     double ab_length_squared = ab.squaredNorm();
-    if (ab_length_squared == 0.0) {
-        // Segment is a point
-        double p_x = (p - a).normalized().x();
-        double p_y = (p - a).normalized().y();
-        return {ap.norm(), p_x, p_y};
+    double epsilon = 1e-6;  // small value to avoid division by zero
+
+    // Check if line segment is actually a point (tiny obstacle)
+    if (ab_length_squared < epsilon) {
+        // Segment is effectively a point
+        double norm_ap = ap.norm();
+        if (norm_ap < 0.1) {  // bufferZoneWidth is a predefined constant for the buffer zone width
+            Eigen::Vector2d edgeDirection = calculateEdgeDirection(point, segment);
+            double derivative_x = edgeDirection.x();
+            double derivative_y = edgeDirection.y();
+            return {norm_ap, derivative_x, derivative_y};
+        } else {
+          if (norm_ap < epsilon) {
+              // Point is on the segment point, derivatives are zero
+              return {0.0, 0.0, 0.0};
+          } else {
+              double p_x = ap.x() / norm_ap;
+              double p_y = ap.y() / norm_ap;
+              return {norm_ap, p_x, p_y};
+          }
+        }
     }
 
-    double t = ap.dot(ab) / ab_length_squared;
-    Eigen::Vector2d projection_point;
-    if (t < 0.0) {
-        projection_point = a;  // Closest to point a
-    } else if (t > 1.0) {
-        projection_point = b;  // Closest to point b
-    } else {
-        projection_point = a + t * ab;  // On the segment
-    }
+    double t = ap.dot(ab) / (ab_length_squared + epsilon);
+    Eigen::Vector2d projection_point = (t < 0.0) ? a : (t > 1.0) ? b : a + t * ab;
 
     Eigen::Vector2d d = p - projection_point;
     double distance = d.norm();
-    Eigen::Vector2d d_normalized = (distance > 0.0) ? d.normalized() : Eigen::Vector2d(0.0, 0.0);
 
-    // Calculate derivatives
+    if (distance < epsilon) {
+        // Point is very close or on the segment, derivatives are zero
+        return {0.0, 0.0, 0.0};
+    }
+
+    Eigen::Vector2d d_normalized = d / distance;
     double derivative_x = -d_normalized.x();
     double derivative_y = -d_normalized.y();
 
     return {distance, derivative_x, derivative_y};
-}
-
-
-
-// TODO: OBSOLETE!
-void ObstacleConstraint::FillJacobianBlock (std::string var_set, Jacobian& jac) const {
-  if (var_set == ee_motion_->GetName()) {
-    auto nodes = ee_motion_->GetNodes();
-    int row = 0;
-    for (int id : node_ids_) {
-      Vector3d p = nodes.at(id).p();
-      auto segments = terrain_->GetObstacles();
-
-      // Initialize derivatives to zero
-      double derivative_x = 0.0;
-      double derivative_y = 0.0;
-
-      for (const auto& segment : segments) {
-        double distance, temp_derivative_x, temp_derivative_y;
-        std::tie(distance, temp_derivative_x, temp_derivative_y) = 
-            DistanceAndDerivativesToLineSegment({p.x(), p.y()}, segment);
-
-        if (distance < min_distance_to_obstacle_) {
-          derivative_x = temp_derivative_x;
-          derivative_y = temp_derivative_y;
-          break; // Break if this is the nearest obstacle
-        }
-      }
-
-      // Fill the Jacobian entries for this node
-      int idx_x = ee_motion_->GetOptIndex(NodesVariables::NodeValueInfo(id, kPos, X));
-      int idx_y = ee_motion_->GetOptIndex(NodesVariables::NodeValueInfo(id, kPos, Y));
-      jac.coeffRef(row, idx_x) = derivative_x;
-      jac.coeffRef(row, idx_y) = derivative_y;
-      row++;
-    }
-  }
 }
 
 } /* namespace towr */
